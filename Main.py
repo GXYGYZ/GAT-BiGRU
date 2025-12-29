@@ -125,13 +125,11 @@ class SubjectDataset(Dataset):
     def __init__(self, subjects_data, dynamic_scaler, static_scaler, mode='train'):
         self.samples = []
         for subj in subjects_data:
-            # 直接使用已处理好的静态特征
             static_processed = subj[mode]['static']
             dynamic = subj[mode]['dynamic']
             time_steps = subj[mode]['time']
 
             for i in range(len(dynamic) - n_in - n_out + 1):
-                # 添加时间步长信息
                 sample_time = time_steps[i:i + n_in]
                 self.samples.append({
                     'X': dynamic[i:i + n_in],
@@ -173,18 +171,18 @@ class TimeSeriesModel(nn.Module):
                  gru_layers=2):
         super().__init__()
         self.static_dim = static_dim
-        self.use_static = static_dim > 0  # 有静态信息才使用
+        self.use_static = static_dim > 0  
 
         self.pos_encoder = SinusoidalPositionalEncoding(pos_enc_dim)
 
-        # GAT参数
-        self.gat_in = 1 + pos_enc_dim  # 原始特征+位置编码
+      
+        self.gat_in = 1 + pos_enc_dim  
         self.gat_hidden = 32
         self.gat_heads = 4
 
 
         self.gat = nn.ModuleList()
-        self.gat_projections = nn.ModuleList()  # 残差投影
+        self.gat_projections = nn.ModuleList()  
         for i in range(gat_layers):
             in_channels = self.gat_in if i == 0 else self.gat_hidden * self.gat_heads
             self.gat.append(
@@ -206,7 +204,7 @@ class TimeSeriesModel(nn.Module):
 
 
         self.raw_proj = nn.Sequential(
-            nn.Linear(dynamic_dim, 128),  # 关键修改点1：输出维度改为128
+            nn.Linear(dynamic_dim, 128), 
             nn.BatchNorm1d(128),
             nn.GELU(),
             nn.Dropout(0.1)
@@ -214,7 +212,7 @@ class TimeSeriesModel(nn.Module):
 
 
         self.fusion_gate = nn.Sequential(
-            nn.Linear(256, 256),  # 输入拼接后的总维度
+            nn.Linear(256, 256),  
             nn.Sigmoid()
         )
 
@@ -231,10 +229,10 @@ class TimeSeriesModel(nn.Module):
 
         gru_input_size = 128 + 128  # raw_features + gat_seq
         if self.use_static:
-            gru_input_size += 64  # 如果有静态特征再加64维
+            gru_input_size += 64 
 
         self.bigru = nn.GRU(
-            input_size=gru_input_size,  # 根据情况调整
+            input_size=gru_input_size,  
             hidden_size=256,
             num_layers=gru_layers,
             batch_first=True,
@@ -286,7 +284,7 @@ class TimeSeriesModel(nn.Module):
             static_feat = self.static_net(static)  # [batch, 64]
             static_expanded = static_feat.unsqueeze(1).expand(-1, seq_len, -1)  # [batch, T, 64]
         else:
-            static_expanded = None  # 无静态信息
+            static_expanded = None  
 
 
         node_features = torch.cat([
@@ -424,7 +422,7 @@ class TimeSeriesModel1(nn.Module):
 
         output_net_size=512
         if self.use_static:
-            output_net_size += 64  # 如果有静态特征再加64维
+            output_net_size += 64  
 
         self.output_net = nn.Sequential(
             ResidualBlock(output_net_size, 128),
@@ -569,7 +567,7 @@ def load_data():
     if SELECTED_STATIC_FEATURES:
         static_scaler = StandardScaler().fit(all_static)
     else:
-        static_scaler = None  # 没有静态特征时不使用标准化器
+        static_scaler = None  
 
 
     train_dynamic = []
@@ -629,12 +627,12 @@ def evaluate_model(model, loader, dynamic_scaler):
             X, y, t, s = X.to(device), y.to(device), t.to(device), s.to(device)
             pred = model(X, t, s)
 
-            # 逆标准化并保持三维结构
+            
             X_real = dynamic_scaler.inverse_transform(X.cpu().numpy().reshape(-1, 13)).reshape(X.shape)
             y_real = dynamic_scaler.inverse_transform(y.cpu().numpy().reshape(-1, 13)).reshape(y.shape)
             pred_real = dynamic_scaler.inverse_transform(pred.cpu().numpy().reshape(-1, 13)).reshape(pred.shape)
 
-            # 拼接完整序列
+           
             for i in range(X.shape[0]):
                 full_true = np.concatenate([X_real[i], y_real[i]])
                 full_pred = np.concatenate([X_real[i], pred_real[i]])
