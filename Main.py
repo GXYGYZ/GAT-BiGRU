@@ -56,7 +56,7 @@ def setup_chinese_font():
 
             if os.path.exists(font):
 
-                plt.rcParams['pdf.fonttype'] = 42  # 使用Type 3字体解决嵌入问题
+                plt.rcParams['pdf.fonttype'] = 42  
                 try:
                     font_prop = fm.FontProperties(fname=font)
                     plt.rcParams['font.family'] = font_prop.get_name()
